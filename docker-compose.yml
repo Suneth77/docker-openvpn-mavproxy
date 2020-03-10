@@ -1,0 +1,41 @@
+version: '3.4'
+
+services:
+  # This is the vpn service responsible for establishing a connection to the VPN
+  # server and sending traffic to it.
+  vpn:
+    image: dperson/openvpn-client
+    # Extra permissions required for the image to function.
+    cap_add:
+      - net_admin
+    devices:
+      - /dev/net/tun
+    restart: unless-stopped
+    # If you need to interactively enter your password, un-comment the following lines.
+    # stdin_open: true
+    # tty: true
+    ports:
+      - "14550:14550"
+    # The ovpn configuration file must be present at the ./vpn/config.ovpn path.
+    volumes:
+      - ./vpn:/vpn
+    networks:
+      - default
+
+
+  mavproxy:
+    image: uliyas1/mavproxy:0.0.5
+    restart: unless-stopped
+    # This container binds to port 14550.
+    # Share the network stack of the vpn client container. When this container
+    # binds ports, they can be reached through the vpn service. This also adds a
+    # depnds_on for the vpn service.
+    depends_on:
+      - vpn
+    network_mode: service:vpn
+    volumes:
+      - ./logs:/var/log/mavproxy/
+    #command: --master=udp:127.0.0.1:14550 --out=udp:192.168.2.255:14550
+
+networks:
+  default:
